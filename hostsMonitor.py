@@ -180,9 +180,9 @@ class NetworkMonitorApp(ctk.CTk):
         self.frame_header.pack(padx=25, fill="x", pady=(10, 0))
 
         colunas = [
-            ("Dispositivo / IP", 0, 180),
-            ("Setor", 1, 100),
-            ("Status", 2, 100),
+            ("Dispositivo / IP", 0, 260),
+            ("Setor", 1, 120),
+            ("Status", 2, 120),
             ("Latência", 3, 100),
             ("Perda", 4, 80),
             ("Portas Críticas Abertas", 5, 180),
@@ -282,10 +282,10 @@ class NetworkMonitorApp(ctk.CTk):
         else:
             row_frame.pack_forget()
 
-        lbl_nome = ctk.CTkLabel(row_frame, text=f"{nome}\n({ip})", justify="left", font=ctk.CTkFont(size=13), width=180, anchor="w")
+        lbl_nome = ctk.CTkLabel(row_frame, text=f"{nome} - {ip}", justify="left", font=ctk.CTkFont(size=13), width=260, anchor="w")
         lbl_nome.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-        lbl_setor_visual = ctk.CTkLabel(row_frame, text=setor, font=ctk.CTkFont(size=12), width=100, anchor="w")
+        lbl_setor_visual = ctk.CTkLabel(row_frame, text=setor, font=ctk.CTkFont(size=12), width=120, anchor="w")
         lbl_setor_visual.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
         lbl_status = ctk.CTkLabel(row_frame, text="⚪ Aguardando", text_color="grey", font=ctk.CTkFont(weight="bold"), width=100, anchor="w")
