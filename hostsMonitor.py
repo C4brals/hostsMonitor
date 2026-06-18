@@ -163,10 +163,8 @@ class NetworkMonitorApp(ctk.CTk):
             ("Status", 2, 100),
             ("Latência", 3, 100),
             ("Perda", 4, 80),
-            ("Endereço MAC", 5, 160),
-            ("Portas Comuns", 6, 140),  # Nova divisão aqui
-            ("Portas Críticas", 7, 140),  # Nova divisão aqui
-            ("Ações", 8, 150)
+            ("Portas Críticas Abertas", 5, 180),
+            ("Ações", 6, 150)
         ]
 
         for texto, col, largura in colunas:
@@ -253,32 +251,24 @@ class NetworkMonitorApp(ctk.CTk):
         lbl_perda = ctk.CTkLabel(row_frame, text="0%", font=ctk.CTkFont(size=12), width=80, anchor="w")
         lbl_perda.grid(row=0, column=4, padx=5, pady=5, sticky="w")
 
-        # Coluna 5: MAC
-        lbl_mac = ctk.CTkLabel(row_frame, text="Buscando...", font=ctk.CTkFont(size=12), width=160, anchor="w")
-        lbl_mac.grid(row=0, column=5, padx=5, pady=5, sticky="w")
-
-        # Coluna 6: Portas Comuns
-        lbl_portas_comuns = ctk.CTkLabel(row_frame, text="Escaneando...", font=ctk.CTkFont(size=12), width=140,
-                                         anchor="w")
-        lbl_portas_comuns.grid(row=0, column=6, padx=5, pady=5, sticky="w")
-
         # Coluna 7: Portas Críticas
         lbl_portas_criticas = ctk.CTkLabel(row_frame, text="Escaneando...", font=ctk.CTkFont(size=12, weight="bold"),
                                            width=140, anchor="w")
-        lbl_portas_criticas.grid(row=0, column=7, padx=5, pady=5, sticky="w")
+        lbl_portas_criticas.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
         # Coluna 8: Ações
         frame_acoes = ctk.CTkFrame(row_frame, fg_color="transparent")
         frame_acoes.grid(row=0, column=8, padx=5, pady=5, sticky="w")
 
         host_data = {
-            "id": id_db, "nome": nome, "ip": ip, "setor": setor, "mac_resolvido": False,
+            "id": id_db, "nome": nome, "ip": ip, "setor": setor,
             "status_anterior": "DESCONHECIDO", "portas_perigosas_alertadas": set(),
             "ultimo_scan_portas": 0,
             "label_nome": lbl_nome, "label_setor": lbl_setor_visual, "label_status": lbl_status,
-            "label_ms": lbl_ms, "label_perda": lbl_perda, "label_mac": lbl_mac,
-            "label_portas_comuns": lbl_portas_comuns, "label_portas_criticas": lbl_portas_criticas,
-            "frame_linha": row_frame, "ativo": True
+            "label_ms": lbl_ms, "label_perda": lbl_perda,
+            "label_portas_criticas": lbl_portas_criticas,
+            "frame_linha": row_frame, "ativo": True,
+            "historico_ping": [],            
         }
 
         btn_editar = ctk.CTkButton(frame_acoes, text="Editar", width=60, fg_color="#3498db", hover_color="#2980b9",
@@ -325,9 +315,8 @@ class NetworkMonitorApp(ctk.CTk):
                     self.conn.commit()
 
                     if novo_ip != host_data["ip"]:
-                        host_data["mac_resolvido"] = False
                         host_data["portas_perigosas_alertadas"].clear()
-                        host_data["label_mac"].configure(text="Buscando...")
+                        host_data["ultimo_scan_portas"] = 0
 
                     self.registrar_log(novo_ip, f"Host Modificado. Setor: {novo_setor} | Nome: {novo_nome}")
 
@@ -397,40 +386,45 @@ class NetworkMonitorApp(ctk.CTk):
             self.conn.commit()
             self.atualizar_tabela_logs()
 
-    def obter_mac(self, ip):
-        try:
-            ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=ip), timeout=1.5, verbose=False)
-            for snd, rcv in ans:
-                return rcv.sprintf(r"%Ether.src%").upper()
-        except:
-            pass
-        return "Não encontrado"
-
+    
     def escanear_portas(self, ip, host_data):
-        portas_para_testar = [80, 443, 445, 3389, 8080]
-        comuns_abertas = []
-        criticas_abertas = []
+
+        portas_para_testar = [
+            80,
+            443,
+            445,
+            3389,
+            22,
+            21,
+            3306,
+            1433,
+            8080
+        ]
+
+        portas_abertas = []
 
         for porta in portas_para_testar:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(0.03)  # Timeout de 30ms para cada porta
+                    s.settimeout(0.2)
+
                     if s.connect_ex((ip, porta)) == 0:
+
+                        portas_abertas.append(porta)
+
                         if porta in PORTAS_PERIGOSAS:
-                            criticas_abertas.append(porta)
                             if porta not in host_data["portas_perigosas_alertadas"]:
                                 host_data["portas_perigosas_alertadas"].add(porta)
-                                self.registrar_log(ip,
-                                                   f"⚠️ ALERTA: Porta crítica {porta} exposta na rede por {host_data['nome']}")
-                        else:
-                            comuns_abertas.append(porta)
+
+                                self.registrar_log(
+                                    ip,
+                                    f"⚠️ ALERTA: Porta crítica {porta} exposta na rede por {host_data['nome']}"
+                                )
+
             except:
                 pass
 
-        texto_comuns = ", ".join(map(str, comuns_abertas)) if comuns_abertas else "Nenhuma"
-        texto_criticas = ", ".join(map(str, criticas_abertas)) if criticas_abertas else "Nenhuma"
-
-        return texto_comuns, texto_criticas
+        return ", ".join(map(str, portas_abertas)) if portas_abertas else "Nenhuma"
 
     def atualizar_pings_loop(self):
         while self.rodando:
@@ -438,16 +432,7 @@ class NetworkMonitorApp(ctk.CTk):
                 if host is None or not isinstance(host, dict): continue
                 if not host.get("ativo", False): continue
 
-                ip = host["ip"]
-
-                if pings_sucesso > 0 and not host["mac_resolvido"]:
-                    mac = self.obter_mac(ip)
-
-                    if host["ativo"]:
-                        host["label_mac"].configure(text=mac)
-
-                    if mac != "Não encontrado":
-                        host["mac_resolvido"] = True
+                ip = host["ip"]                
 
                 pings_sucesso = 0
                 soma_ms = 0
@@ -459,12 +444,40 @@ class NetworkMonitorApp(ctk.CTk):
                     pings_sucesso = 1
                     soma_ms = resposta
 
-                if not host["ativo"]: continue
+                host["historico_ping"].append(
 
-                perda = int(((total_testes - pings_sucesso) / total_testes) * 100)
-                host["label_perda"].configure(text=f"{perda}%", text_color="#e74c3c" if perda > 0 else "white")
+                1 if resposta is not None and resposta is not False else 0)
+
+                host["historico_ping"] = host["historico_ping"][-20:]
+
+                if len(host["historico_ping"]) > 0:
+
+                    sucessos = sum(host["historico_ping"])
+
+                    perda = int(
+                        ((len(host["historico_ping"]) - sucessos)
+                        / len(host["historico_ping"])) * 100
+                    )
+
+                else:
+                    perda = 0       
+
+                if perda >= 50:
+                    cor_perda = "#e74c3c"      # vermelho
+                elif perda >= 20:
+                    cor_perda = "#f39c12"      # laranja
+                else:
+                    cor_perda = "#2ecc71"      # verde
+
+                host["label_perda"].configure(
+                    text=f"{perda}%",
+                    text_color=cor_perda
+                )             
+
+                if not host["ativo"]: continue                
 
                 if pings_sucesso > 0:
+                    
                     ms_medio = int((soma_ms / pings_sucesso) * 1000)
                     host["label_status"].configure(text="● ONLINE", text_color="#2ecc71")
                     host["label_ms"].configure(text=f"{ms_medio} ms")
@@ -475,21 +488,18 @@ class NetworkMonitorApp(ctk.CTk):
 
                     if tempo_atual - host.get("ultimo_scan_portas", 0) > INTERVALO_SCAN:
                         # Só faz o scan pesado se o tempo necessário já tiver passado
-                        portas_comuns, portas_criticas = self.escanear_portas(ip, host)
+                        portas_criticas = self.escanear_portas(ip, host)
 
                         if host["ativo"]:
                             # Atualiza a coluna comum com cor padrão
-                            host["label_portas_comuns"].configure(
-                                text=portas_comuns,
-                                text_color=ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-                            )
-
-                            # Atualiza a coluna crítica: se houver portas, joga VERMELHO, se não, cor padrão
-                            if portas_criticas != "Nenhuma":
-                                host["label_portas_criticas"].configure(text=portas_criticas, text_color="#e74c3c")
-                            else:
+                            if portas_criticas != "Nenhuma":                                
                                 host["label_portas_criticas"].configure(
                                     text=portas_criticas,
+                                    text_color="#e74c3c"
+                                )
+                            else:
+                                host["label_portas_criticas"].configure(
+                                    text="Nenhuma",
                                     text_color=ctk.ThemeManager.theme["CTkLabel"]["text_color"]
                                 )
 
@@ -503,14 +513,17 @@ class NetworkMonitorApp(ctk.CTk):
                 else:
                     host["label_status"].configure(text="● OFFLINE", text_color="#e74c3c")
                     host["label_ms"].configure(text="---")
-                    host["label_portas_comuns"].configure(text="---", text_color="grey")
-                    host["label_portas_criticas"].configure(text="---", text_color="grey")
+
+                    host["label_portas_criticas"].configure(
+                            text="---",
+                            text_color="grey"
+                    )
 
                     if host["status_anterior"] == "ONLINE":
                         self.registrar_log(ip, f"❌ ALERTA: {host['nome']} caiu ou parou de responder aos pings.")
                     host["status_anterior"] = "OFFLINE"
 
-                time.sleep(10)
+                time.sleep(1)
 
     def monitorar_recursos_locais(self):
         # 1. Captura uso de CPU e RAM
