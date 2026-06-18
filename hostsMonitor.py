@@ -185,7 +185,7 @@ class NetworkMonitorApp(ctk.CTk):
             ("Status", 2, 120),
             ("Latência", 3, 100),
             ("Perda", 4, 80),
-            ("Portas Críticas Abertas", 5, 180),
+            ("Portas Críticas Abertas", 5, 300),
             ("Ações", 6, 150)
         ]
 
