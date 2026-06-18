@@ -407,14 +407,14 @@ class NetworkMonitorApp(ctk.CTk):
         return "Não encontrado"
 
     def escanear_portas(self, ip, host_data):
-        portas_para_testar = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 1433, 3306, 3389, 5432, 8080, 8443]
+        portas_para_testar = [80, 443, 445, 3389, 8080]
         comuns_abertas = []
         criticas_abertas = []
 
         for porta in portas_para_testar:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(0.05)
+                    s.settimeout(0.03)  # Timeout de 30ms para cada porta
                     if s.connect_ex((ip, porta)) == 0:
                         if porta in PORTAS_PERIGOSAS:
                             criticas_abertas.append(porta)
@@ -440,21 +440,24 @@ class NetworkMonitorApp(ctk.CTk):
 
                 ip = host["ip"]
 
-                if not host["mac_resolvido"]:
+                if pings_sucesso > 0 and not host["mac_resolvido"]:
                     mac = self.obter_mac(ip)
-                    if host["ativo"]: host["label_mac"].configure(text=mac)
-                    if mac != "Não encontrado": host["mac_resolvido"] = True
+
+                    if host["ativo"]:
+                        host["label_mac"].configure(text=mac)
+
+                    if mac != "Não encontrado":
+                        host["mac_resolvido"] = True
 
                 pings_sucesso = 0
                 soma_ms = 0
-                total_testes = 4
+                total_testes = 1
 
-                for _ in range(total_testes):
-                    if not host["ativo"]: break
-                    resposta = ping(ip, timeout=0.2)
-                    if resposta is not None and resposta is not False:
-                        pings_sucesso += 1
-                        soma_ms += resposta
+                resposta = ping(ip, timeout=0.5)
+
+                if resposta is not None and resposta is not False:
+                    pings_sucesso = 1
+                    soma_ms = resposta
 
                 if not host["ativo"]: continue
 
@@ -468,7 +471,7 @@ class NetworkMonitorApp(ctk.CTk):
 
                     # --- INÍCIO DA TRAVA DE TEMPO PARA O SCAN DE PORTAS ---
                     tempo_atual = time.time()
-                    INTERVALO_SCAN = 600  # Tempo em segundos (600s = 10 minutos)
+                    INTERVALO_SCAN = 1800  # Tempo em segundos (600s = 10 minutos)
 
                     if tempo_atual - host.get("ultimo_scan_portas", 0) > INTERVALO_SCAN:
                         # Só faz o scan pesado se o tempo necessário já tiver passado
@@ -507,7 +510,7 @@ class NetworkMonitorApp(ctk.CTk):
                         self.registrar_log(ip, f"❌ ALERTA: {host['nome']} caiu ou parou de responder aos pings.")
                     host["status_anterior"] = "OFFLINE"
 
-                time.sleep(5)
+                time.sleep(10)
 
     def monitorar_recursos_locais(self):
         # 1. Captura uso de CPU e RAM
