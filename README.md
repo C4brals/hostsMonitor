@@ -1,6 +1,6 @@
-# 🖥️ Host Monitor - Dashboard de Monitoramento de Rede
+# 🖥️ HostsMonitor - Dashboard de Monitoramento de Rede
 
-O **Host Monitor** é uma aplicação desktop moderna desenvolvida em Python para monitoramento e auditoria de segurança de dispositivos de rede em tempo real. 
+O **HostsMonitor** é uma aplicação desktop moderna desenvolvida em Python para monitoramento e auditoria de segurança de dispositivos de rede em tempo real. 
 Com uma interface gráfica limpa e responsiva, o sistema gerencia status de hosts locais, monitora serviços externos (sites/APIs), 
 escaneia portas críticas expostas e emite alertas visuais diretamente no sistema operacional.
 
