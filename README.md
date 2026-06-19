@@ -68,15 +68,15 @@ Layout responsivo e amigável para equipes de TI e suporte.
 
 🛠️ Tecnologias Utilizadas
 
-Tecnologia	Finalidade
-Python	Linguagem principal do projeto
-CustomTkinter	Interface gráfica moderna
-Ping3	Testes ICMP e medição de latência
-Requests	Validação de disponibilidade HTTP/HTTPS
-SQLite3	Banco de dados local
-Threading	Processamento assíncrono e monitoramento em background
-Plyer	Notificações nativas do sistema operacional
-Socket	Escaneamento de portas TCP
+Tecnologia	    Finalidade
+Python	        Linguagem principal do projeto
+CustomTkinter	  Interface gráfica moderna
+Ping3	Testes    ICMP e medição de latência
+Requests	      Validação de disponibilidade HTTP/HTTPS
+SQLite3	        Banco de dados local
+Threading	      Processamento assíncrono e monitoramento em background
+Plyer	          Notificações nativas do sistema operacional
+Socket	        Escaneamento de portas TCP
 
 🔍 Tipos de Monitoramento
 
@@ -95,13 +95,13 @@ DNS	Detectar falhas de resolução de nomes
 
 Exemplo:
 
-Serviço	Ping	HTTP
+Serviço	          Ping	          HTTP
 
-Google	🟢 15 ms	🟢 200
+Google	          🟢 15 ms	      🟢 200
 
-API Corporativa	🟢 20 ms	🔴 500
+API Corporativa	  🟢 20 ms	      🔴 500
 
-Portal Cliente	🟢 18 ms	🔴 Timeout
+Portal Cliente	  🟢 18 ms	      🔴 Timeout
 
 Isso permite identificar situações em que o servidor responde ao ping, mas a aplicação web está indisponível.
 
