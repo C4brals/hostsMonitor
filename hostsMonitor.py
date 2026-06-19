@@ -302,7 +302,7 @@ class NetworkMonitorApp(ctk.CTk):
         lbl_portas_criticas.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
         frame_acoes = ctk.CTkFrame(row_frame, fg_color="transparent", width=150)
-        frame_acoes.grid(row=0, column=6, padx=(10,5), pady=5, sticky="w")
+        frame_acoes.grid(row=0, column=6, padx=(5,5), pady=5, sticky="w")
         frame_acoes.grid_propagate(False)
 
         host_data = {
