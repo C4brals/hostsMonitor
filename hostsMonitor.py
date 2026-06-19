@@ -179,7 +179,7 @@ class NetworkMonitorApp(ctk.CTk):
             ("Status", 2, 120),
             ("Latência", 3, 100),
             ("Perda", 4, 80),
-            ("Portas Críticas Abertas", 5, 300),
+            ("Portas Críticas Abertas", 5, 400),
             ("Ações", 6, 150)
         ]
 
@@ -284,7 +284,7 @@ class NetworkMonitorApp(ctk.CTk):
             row_frame.pack_forget()
 
         lbl_nome = ctk.CTkLabel(row_frame, text=f"{nome} - {ip}", justify="left", font=ctk.CTkFont(size=13), width=260, anchor="w")
-        lbl_nome.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        lbl_nome.grid(row=0, column=0, padx=(10,5), pady=5, sticky="w")
 
         lbl_setor_visual = ctk.CTkLabel(row_frame, text=setor, font=ctk.CTkFont(size=12), width=120, anchor="w")
         lbl_setor_visual.grid(row=0, column=1, padx=5, pady=5, sticky="w")
@@ -298,11 +298,11 @@ class NetworkMonitorApp(ctk.CTk):
         lbl_perda = ctk.CTkLabel(row_frame, text="0%", font=ctk.CTkFont(size=12), width=80, anchor="w")
         lbl_perda.grid(row=0, column=4, padx=5, pady=5, sticky="w")
 
-        lbl_portas_criticas = ctk.CTkLabel(row_frame, text="Escaneando...", font=ctk.CTkFont(size=12, weight="bold"), width=300, anchor="w")
+        lbl_portas_criticas = ctk.CTkLabel(row_frame, text="Escaneando...", font=ctk.CTkFont(size=12, weight="bold"), width=400, anchor="w")
         lbl_portas_criticas.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
         frame_acoes = ctk.CTkFrame(row_frame, fg_color="transparent", width=150)
-        frame_acoes.grid(row=0, column=6, padx=5, pady=5, sticky="w")
+        frame_acoes.grid(row=0, column=6, padx=(10,5), pady=5, sticky="w")
         frame_acoes.grid_propagate(False)
 
         host_data = {
@@ -405,11 +405,7 @@ class NetworkMonitorApp(ctk.CTk):
 
     def filtrar_setores_action(self, setor_selecionado):
         self.setor_atual_filtro = setor_selecionado
-        for host in self.hosts:
-            if setor_selecionado == "Todos" or host["setor"] == setor_selecionado:
-                host["frame_linha"].pack(pady=3, fill="x")
-            else:
-                host["frame_linha"].pack_forget()
+        self.aplicar_filtros()
 
     def atualizar_tabela_logs(self):
         conn = self.conectar_banco_local()
@@ -620,14 +616,27 @@ class NetworkMonitorApp(ctk.CTk):
         somente_alerta = self.var_alerta.get()
 
         for host in self.hosts:
-            mostrar = True
-            if somente_online and not somente_offline:
-                mostrar = host["status_anterior"] == "ONLINE"
-            elif somente_offline and not somente_online:
-                mostrar = host["status_anterior"] == "OFFLINE"
 
+            # FILTRO DE SETOR
+            mostrar = (
+                self.setor_atual_filtro == "Todos"
+                or host["setor"] == self.setor_atual_filtro
+            )
+
+            # FILTRO ONLINE/OFFLINE
+            if mostrar:
+                if somente_online and not somente_offline:
+                    mostrar = host["status_anterior"] == "ONLINE"
+
+                elif somente_offline and not somente_online:
+                    mostrar = host["status_anterior"] == "OFFLINE"
+
+            # FILTRO ALERTA
             if mostrar and somente_alerta:
-                mostrar = host["label_portas_criticas"].cget("text") not in ["Nenhuma", "---", "Escaneando..."]
+                mostrar = (
+                    host["label_portas_criticas"].cget("text")
+                    not in ["Nenhuma", "---", "Escaneando..."]
+                )
 
             if mostrar:
                 host["frame_linha"].pack(pady=3, fill="x")
