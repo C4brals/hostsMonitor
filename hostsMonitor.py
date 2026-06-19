@@ -21,31 +21,28 @@ class NetworkMonitorApp(ctk.CTk):
         try:
             self.iconbitmap(r"icons\icon.ico")
         except:
-            pass # Evita quebrar se o ícone não existir no caminho
+            pass 
 
         self.title("hostsMonitor")
         
         self.hosts = []
-        self.servicos_externos = []
+        self.labels_externos = {}  # Dicionário global para a Thread achar as labels externas
         self.setor_atual_filtro = "Todos"
 
         self.inicializar_banco()
         self.criar_interface()
         self.carregar_hosts_salvos()
-        self.carregar_servicos_externos()
+        self.atualizar_lista_externa()  # Renderiza e carrega os serviços externos
         self.atualizar_tabela_logs()
 
         self.rodando = True
         self.thread_monitor = threading.Thread(target=self.atualizar_pings_loop, daemon=True)
         self.thread_monitor.start()
 
-        # Configura o fechamento limpo do app
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-
         self.after(100, lambda: self.state("zoomed"))
 
     def inicializar_banco(self):
-        # Criamos uma conexão rápida apenas para setup inicial na thread principal
         conn = sqlite3.connect("hosts.db")
         cursor = conn.cursor()
         cursor.execute("""
@@ -81,7 +78,6 @@ class NetworkMonitorApp(ctk.CTk):
         conn.close()
 
     def conectar_banco_local(self):
-        """ Helper para obter uma conexão exclusiva para a thread que chamar """
         return sqlite3.connect("hosts.db")
 
     def enviar_notificacao_windows(self, titulo, mensagem):
@@ -97,8 +93,6 @@ class NetworkMonitorApp(ctk.CTk):
 
     def registrar_log(self, ip, evento):
         data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        
-        # Conexão local dedicada para evitar colisão entre threads
         conn = sqlite3.connect("hosts.db")
         cursor = conn.cursor()
         cursor.execute("INSERT INTO logs (data_hora, host_ip, evento) VALUES (?, ?, ?)", (data_hora, ip, evento))
@@ -109,11 +103,9 @@ class NetworkMonitorApp(ctk.CTk):
         self.enviar_notificacao_windows(titulo_alerta, f"IP: {ip}\n{evento}")
 
         if hasattr(self, "txt_logs"):
-            # Invoca a atualização visual de forma segura na Thread Principal
             self.after(0, self.atualizar_tabela_logs)
 
     def criar_interface(self):
-        
         lbl_assinatura = ctk.CTkLabel(self, text="Augusto Cabral", font=ctk.CTkFont(size=10), text_color="gray50")
         lbl_assinatura.pack(side="bottom", anchor="e", padx=15, pady=(0, 5))
         
@@ -121,9 +113,10 @@ class NetworkMonitorApp(ctk.CTk):
         self.abas.pack(fill="both", expand=True, padx=10, pady=(10, 0))
         
         self.tab_monitor = self.abas.add("Monitoramento de Dispositivos")
+        self.tab_externo = self.abas.add("Serviços Externos")
         self.tab_logs = self.abas.add("Logs de Auditoria")
 
-        # --- ABA MONITORAMENTO ---
+        # --- ABA MONITORAMENTO DE DISPOSITIVOS ---
         self.frame_cadastro = ctk.CTkFrame(self.tab_monitor)
         self.frame_cadastro.pack(pady=10, padx=10, fill="x")
 
@@ -196,27 +189,42 @@ class NetworkMonitorApp(ctk.CTk):
         self.frame_lista = ctk.CTkScrollableFrame(self.tab_monitor)
         self.frame_lista.pack(pady=5, padx=10, fill="both", expand=True)
 
-        # MONITORAMENTO EXTERNO
-        self.frame_externo = ctk.CTkFrame(self.tab_monitor)
-        self.frame_externo.pack(fill="x", padx=10, pady=10)
+        # --- ABA MONITORAMENTO EXTERNO ---
+        self.frame_externo = ctk.CTkFrame(self.tab_externo)
+        self.frame_externo.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(self.frame_externo, text="Monitoramento Externo", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=10, pady=(5,10))
+        ctk.CTkLabel(self.frame_externo, text="Monitoramento de Serviços Externos (Websites / DNS)", font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=10, pady=(10,15))
 
         self.frame_cadastro_externo = ctk.CTkFrame(self.frame_externo, fg_color="transparent")
-        self.frame_cadastro_externo.pack(fill="x", padx=10)
+        self.frame_cadastro_externo.pack(fill="x", padx=10, pady=(0, 10))
 
-        self.entry_nome_externo = ctk.CTkEntry(self.frame_cadastro_externo, width=180, placeholder_text="Nome")
+        self.entry_nome_externo = ctk.CTkEntry(self.frame_cadastro_externo, width=180, placeholder_text="Nome do Serviço")
         self.entry_nome_externo.pack(side="left", padx=5)
 
-        self.entry_host_externo = ctk.CTkEntry(self.frame_cadastro_externo, width=250, placeholder_text="google.com")
-        self.entry_host_externo.pack(side="left", padx=5)
+        self.entry_host_externo = ctk.CTkEntry(self.frame_cadastro_externo, width=250, placeholder_text="google.com ou IP externo")
+        self.host_externo = self.entry_host_externo.pack(side="left", padx=5)
 
-        ctk.CTkButton(self.frame_cadastro_externo, text="Adicionar", command=self.adicionar_servico_externo).pack(side="left", padx=5)
+        ctk.CTkButton(self.frame_cadastro_externo, text="Adicionar Serviço", command=self.adicionar_servico_externo).pack(side="left", padx=5)
 
-        self.frame_lista_externa = ctk.CTkScrollableFrame(self.frame_externo, height=150)
-        self.frame_lista_externa.pack(fill="x", padx=10, pady=10)
+        # Cabeçalho da lista externa
+        self.frame_header_externo = ctk.CTkFrame(self.frame_externo, fg_color="transparent")
+        self.frame_header_externo.pack(padx=20, fill="x", pady=(10, 0))
+        
+        # DEFINIÇÃO DE LARGURAS IDENTICAS PARA IR PARA A LISTA (URL aumentada para 350)
+        colunas_ext = [
+            ("Nome do Serviço", 0, 220),
+            ("Endereço / URL", 1, 350),
+            ("Status / Resposta", 2, 180),
+            ("Ações", 3, 100)
+        ]
+        for texto, col, largura in colunas_ext:
+            lbl = ctk.CTkLabel(self.frame_header_externo, text=texto, font=ctk.CTkFont(size=12, weight="bold"), text_color="gray60", width=largura, anchor="w")
+            lbl.grid(row=0, column=col, padx=5, sticky="w")
 
-        # ABA DE LOGS
+        self.frame_lista_externa = ctk.CTkScrollableFrame(self.frame_externo)
+        self.frame_lista_externa.pack(fill="both", expand=True, padx=10, pady=(5, 10))
+
+        # --- ABA DE LOGS ---
         self.frame_botoes_log = ctk.CTkFrame(self.tab_logs, fg_color="transparent")
         self.frame_botoes_log.pack(fill="x", padx=10, pady=5)
 
@@ -236,15 +244,6 @@ class NetworkMonitorApp(ctk.CTk):
         for id_db, nome, ip, setor in cursor.fetchall():
             self.adicionar_host_na_tela(id_db, nome, ip, setor)
         self.atualizar_lista_filtros_combobox()
-        conn.close()
-
-    def carregar_servicos_externos(self):
-        conn = self.conectar_banco_local()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, host FROM servicos_externos")
-        for id_db, nome, host in cursor.fetchall():
-            # Implementação básica simplificada visual para fins de execução estável
-            pass
         conn.close()
 
     def cadastrar_host_ui(self):
@@ -288,7 +287,7 @@ class NetworkMonitorApp(ctk.CTk):
         lbl_setor_visual = ctk.CTkLabel(row_frame, text=setor, font=ctk.CTkFont(size=12), width=120, anchor="w")
         lbl_setor_visual.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        lbl_status = ctk.CTkLabel(row_frame, text="⚪ Aguardando", text_color="grey", font=ctk.CTkFont(weight="bold"), width=100, anchor="w")
+        lbl_status = ctk.CTkLabel(row_frame, text="⚪ Aguardando", text_color="grey", font=ctk.CTkFont(weight="bold"), width=120, anchor="w")
         lbl_status.grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
         lbl_ms = ctk.CTkLabel(row_frame, text="---", font=ctk.CTkFont(size=12), width=100, anchor="w")
@@ -297,11 +296,12 @@ class NetworkMonitorApp(ctk.CTk):
         lbl_perda = ctk.CTkLabel(row_frame, text="0%", font=ctk.CTkFont(size=12), width=80, anchor="w")
         lbl_perda.grid(row=0, column=4, padx=5, pady=5, sticky="w")
 
-        lbl_portas_criticas = ctk.CTkLabel(row_frame, text="Escaneando...", font=ctk.CTkFont(size=12, weight="bold"), width=140, anchor="w")
+        lbl_portas_criticas = ctk.CTkLabel(row_frame, text="Escaneando...", font=ctk.CTkFont(size=12, weight="bold"), width=300, anchor="w")
         lbl_portas_criticas.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
-        frame_acoes = ctk.CTkFrame(row_frame, fg_color="transparent")
+        frame_acoes = ctk.CTkFrame(row_frame, fg_color="transparent", width=150)
         frame_acoes.grid(row=0, column=6, padx=5, pady=5, sticky="w")
+        frame_acoes.grid_propagate(False)
 
         host_data = {
             "id": id_db, "nome": nome, "ip": ip, "setor": setor,
@@ -366,7 +366,8 @@ class NetworkMonitorApp(ctk.CTk):
                     host_data["nome"] = novo_nome
                     host_data["ip"] = novo_ip
                     host_data["setor"] = novo_setor
-                    host_data["label_nome"].configure(text=f"{novo_nome}\n({novo_ip})")
+                    
+                    host_data["label_nome"].configure(text=f"{novo_nome} - {novo_ip}")
                     host_data["label_setor"].configure(text=novo_setor)
 
                     self.atualizar_lista_filtros_combobox()
@@ -453,7 +454,6 @@ class NetworkMonitorApp(ctk.CTk):
                         if porta in PORTAS_PERIGOSAS:
                             if porta not in host_data["portas_perigosas_alertadas"]:
                                 host_data["portas_perigosas_alertadas"].add(porta)
-                                # Lança o registro de log em thread separada para não travar o loop
                                 threading.Thread(target=self.registrar_log, args=(ip, f"⚠️ ALERTA: Porta crítica {porta} exposta por {host_data['nome']}")).start()
             except:
                 pass
@@ -462,6 +462,7 @@ class NetworkMonitorApp(ctk.CTk):
 
     def atualizar_pings_loop(self):
         while self.rodando:
+            # 1. PING DOS HOSTS INTERNOS
             for host in list(self.hosts):
                 if not self.rodando: break
                 if host is None or not isinstance(host, dict) or not host.get("ativo", False): continue
@@ -477,12 +478,18 @@ class NetworkMonitorApp(ctk.CTk):
 
                 sucessos = sum(host["historico_ping"])
                 perda = int(((len(host["historico_ping"]) - sucessos) / len(host["historico_ping"])) * 100) if host["historico_ping"] else 0
+                
+                def calcular_perda(h=host, p=perda):
+                    if h["historico_ping"]:
+                        s = sum(h["historico_ping"])
+                        return int(((len(h["historico_ping"]) - s) / len(h["historico_ping"])) * 100)
+                    return 0
+                perda = calcular_perda()
 
                 if perda >= 50: cor_perda = "#e74c3c"
                 elif perda >= 20: cor_perda = "#f39c12"
                 else: cor_perda = "#2ecc71"
 
-                # ATUALIZAÇÃO SEGURA VIA .after()
                 self.after(0, lambda h=host, p=perda, c=cor_perda: h["label_perda"].configure(text=f"{p}%", text_color=c))
 
                 if pings_sucesso > 0:
@@ -524,9 +531,21 @@ class NetworkMonitorApp(ctk.CTk):
                         threading.Thread(target=self.registrar_log, args=(ip, f"❌ ALERTA: {host['nome']} caiu.")).start()
                     host["status_anterior"] = "OFFLINE"
 
-            # Atualiza Dashboard de forma Thread-safe
+            # 2. LOOP DE PING DOS SERVIÇOS EXTERNOS
+            for host_ext, label_visual in list(self.labels_externos.items()):
+                if not self.rodando: break
+                try:
+                    resp_ext = ping(host_ext, timeout=0.6)
+                    if resp_ext is not None and resp_ext is not False:
+                        ms_ext = int(resp_ext * 1000)
+                        self.after(0, lambda lbl=label_visual, m=ms_ext: lbl.configure(text=f"🟢 Online ({m} ms)", text_color="#2ecc71"))
+                    else:
+                        self.after(0, lambda lbl=label_visual: lbl.configure(text="🔴 Offline", text_color="#e74c3c"))
+                except:
+                    self.after(0, lambda lbl=label_visual: lbl.configure(text="❌ Erro de DNS", text_color="#e74c3c"))
+
             self.after(0, self.atualizar_dashboard)
-            time.sleep(2) # Aumentado para 2s para poupar processamento cíclico excessivo
+            time.sleep(2) 
 
     def atualizar_dashboard(self):
         total = len(self.hosts)
@@ -573,10 +592,69 @@ class NetworkMonitorApp(ctk.CTk):
             conn.commit()
             self.entry_nome_externo.delete(0, tk.END)
             self.entry_host_externo.delete(0, tk.END)
+            self.atualizar_lista_externa()
         except sqlite3.IntegrityError:
             messagebox.showerror("Erro", "Serviço já existe.")
         finally:
             conn.close()
+
+    def atualizar_lista_externa(self):
+        self.labels_externos.clear()
+
+        for widget in self.frame_lista_externa.winfo_children():
+            widget.destroy()
+
+        conn = self.conectar_banco_local()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT id, nome, host FROM servicos_externos")
+            servicos = cursor.fetchall()
+        finally:
+            conn.close()
+
+        for idx, servico in enumerate(servicos):
+            id_ext, nome_ext, host_ext = servico
+
+            # Adicionado fg_color para alternar sutilmente as linhas se desejar, ou manter transparente
+            linha_frame = ctk.CTkFrame(self.frame_lista_externa, fg_color="transparent")
+            linha_frame.pack(fill="x", pady=2, padx=2)
+
+            # Usando exatamente as mesmas larguras do cabeçalho com anchor="w" (alinhado à esquerda)
+            lbl_nome = ctk.CTkLabel(linha_frame, text=nome_ext, width=220, anchor="w")
+            lbl_nome.grid(row=0, column=0, padx=5, sticky="w")
+
+            # Coluna de Endereço/URL aumentada para 350 e limita visualmente textos gigantes
+            lbl_host = ctk.CTkLabel(linha_frame, text=host_ext, width=350, anchor="w")
+            lbl_host.grid(row=0, column=1, padx=5, sticky="w")
+
+            lbl_status_ext = ctk.CTkLabel(linha_frame, text="Aguardando...", width=180, anchor="w", text_color="gray")
+            lbl_status_ext.grid(row=0, column=2, padx=5, sticky="w")
+
+            self.labels_externos[host_ext] = lbl_status_ext
+
+            # Frame da ação travado em 100px igual ao cabeçalho para alinhar perfeitamente os botões
+            frame_botoes = ctk.CTkFrame(linha_frame, width=100, fg_color="transparent")
+            frame_botoes.grid(row=0, column=3, padx=5, sticky="w")
+            frame_botoes.grid_propagate(False)
+
+            btn_excluir = ctk.CTkButton(
+                frame_botoes, text="Excluir", width=60, fg_color="#616161", hover_color="#c0392b",
+                command=lambda s_id=id_ext: self.excluir_servico_externo(s_id)
+            )
+            btn_excluir.pack(side="left", anchor="w")
+
+    def excluir_servico_externo(self, servico_id):
+        if messagebox.askyesno("Confirmar Exclusão", "Remover este serviço externo?"):
+            conn = self.conectar_banco_local()
+            cursor = conn.cursor()
+            try:
+                cursor.execute("DELETE FROM servicos_externos WHERE id = ?", (servico_id,))
+                conn.commit()
+                self.atualizar_lista_externa()
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao excluir serviço: {e}")
+            finally:
+                conn.close()
 
     def on_closing(self):
         self.rodando = False
