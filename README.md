@@ -2,19 +2,21 @@
 
 O HostsMonitor é uma aplicação desktop desenvolvida em Python para monitoramento contínuo de dispositivos, serviços e recursos de rede. Com uma interface moderna e intuitiva, o sistema permite acompanhar a disponibilidade de hosts internos, monitorar serviços externos através de testes de conectividade e disponibilidade web, identificar portas críticas expostas e registrar eventos de segurança em tempo real.
 
-![Status do Projeto](https://img.shields.io/badge/Status-Conclu%C3%ADdo-brightgreen)
+![Status do Projeto](https://img.shields.io/badge/Status-Em%20Desenvolvimento-orange)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![SQLite](https://img.shields.io/badge/SQLite-3-blue)
 
 🚀 Funcionalidades Principais
 
 📡 Monitoramento de Hosts Internos
+
 Verificação contínua de disponibilidade utilizando ICMP Ping.
 Exibição de latência em milissegundos (ms).
 Cálculo automático de percentual de perda de pacotes.
 Dashboard com indicadores de hosts Online, Offline e em Alerta.
 
 🌐 Monitoramento de Serviços Externos
+
 Cadastro de websites, APIs e serviços externos.
 Teste de conectividade via ICMP Ping.
 Validação real da disponibilidade através de requisições HTTP/HTTPS.
@@ -22,6 +24,7 @@ Exibição do código de resposta retornado pelo servidor (200, 301, 404, 500, e
 Identificação de falhas de DNS, timeout e indisponibilidade da aplicação.
 
 🔒 Auditoria de Segurança
+
 Escaneamento periódico de portas TCP comuns.
 Monitoramento especial de portas críticas:
 445/TCP (SMB)
@@ -29,6 +32,7 @@ Monitoramento especial de portas críticas:
 Geração automática de alertas quando portas sensíveis são detectadas expostas.
 
 🗂️ Organização e Filtros
+
 Agrupamento de dispositivos por setor.
 Filtro rápido por:
 Online
@@ -37,11 +41,13 @@ Em Alerta
 Atualização dinâmica da interface sem necessidade de reiniciar o sistema.
 
 💾 Persistência de Dados
+
 Armazenamento local utilizando SQLite.
 Cadastro, edição e exclusão de dispositivos monitorados.
 Registro permanente de serviços externos monitorados.
 
 📋 Logs de Auditoria
+
 Registro histórico com data e hora de:
 Inclusão e remoção de dispositivos.
 Quedas de conectividade.
@@ -50,15 +56,18 @@ Detecção de portas críticas expostas.
 Consulta rápida através da aba de auditoria.
 
 🔔 Notificações em Tempo Real
+
 Alertas nativos do Windows.
 Notificação automática para eventos críticos de disponibilidade e segurança.
 
 🎨 Interface Moderna
+
 Desenvolvida com CustomTkinter.
 Compatível com modo Claro e Escuro.
 Layout responsivo e amigável para equipes de TI e suporte.
 
 🛠️ Tecnologias Utilizadas
+
 Tecnologia	Finalidade
 Python	Linguagem principal do projeto
 CustomTkinter	Interface gráfica moderna
@@ -70,6 +79,7 @@ Plyer	Notificações nativas do sistema operacional
 Socket	Escaneamento de portas TCP
 
 🔍 Tipos de Monitoramento
+
 Hosts Internos
 Verificação	Objetivo
 ICMP Ping	Verificar conectividade de rede
@@ -93,6 +103,7 @@ Portal Cliente	🟢 18 ms	🔴 Timeout
 Isso permite identificar situações em que o servidor responde ao ping, mas a aplicação web está indisponível.
 
 🎯 Casos de Uso
+
 Monitoramento de servidores Windows e Linux.
 Supervisão de links e equipamentos de rede.
 Monitoramento de websites corporativos.
