@@ -96,8 +96,11 @@ DNS	Detectar falhas de resolução de nomes
 Exemplo:
 
 Serviço	Ping	HTTP
+
 Google	🟢 15 ms	🟢 200
+
 API Corporativa	🟢 20 ms	🔴 500
+
 Portal Cliente	🟢 18 ms	🔴 Timeout
 
 Isso permite identificar situações em que o servidor responde ao ping, mas a aplicação web está indisponível.
