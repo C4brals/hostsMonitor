@@ -8,6 +8,7 @@ import sqlite3
 from tkinter import messagebox
 from datetime import datetime
 from plyer import notification
+import requests
 
 PORTAS_PERIGOSAS = [445, 3389]
 
@@ -215,7 +216,8 @@ class NetworkMonitorApp(ctk.CTk):
             ("Nome do Serviço", 0, 220),
             ("Endereço / URL", 1, 350),
             ("Status / Resposta", 2, 180),
-            ("Ações", 3, 100)
+            ("HTTP", 3, 180),
+            ("Ações", 4, 100)
         ]
         for texto, col, largura in colunas_ext:
             lbl = ctk.CTkLabel(self.frame_header_externo, text=texto, font=ctk.CTkFont(size=12, weight="bold"), text_color="gray60", width=largura, anchor="w")
@@ -532,17 +534,69 @@ class NetworkMonitorApp(ctk.CTk):
                     host["status_anterior"] = "OFFLINE"
 
             # 2. LOOP DE PING DOS SERVIÇOS EXTERNOS
-            for host_ext, label_visual in list(self.labels_externos.items()):
-                if not self.rodando: break
+            for host_ext, labels in list(self.labels_externos.items()):
+                if not self.rodando:
+                    break
+
+                lbl_ping = labels["ping"]
+                lbl_http = labels["http"]
+
+                # PING
                 try:
-                    resp_ext = ping(host_ext, timeout=0.6)
-                    if resp_ext is not None and resp_ext is not False:
-                        ms_ext = int(resp_ext * 1000)
-                        self.after(0, lambda lbl=label_visual, m=ms_ext: lbl.configure(text=f"🟢 Online ({m} ms)", text_color="#2ecc71"))
+                    resp_ping = ping(host_ext, timeout=0.6)
+
+                    if resp_ping is not None and resp_ping is not False:
+                        ms = int(resp_ping * 1000)
+
+                        self.after(
+                            0,
+                            lambda l=lbl_ping, m=ms:
+                            l.configure(
+                                text=f"🟢 {m} ms",
+                                text_color="#2ecc71"
+                            )
+                        )
                     else:
-                        self.after(0, lambda lbl=label_visual: lbl.configure(text="🔴 Offline", text_color="#e74c3c"))
+                        self.after(
+                            0,
+                            lambda l=lbl_ping:
+                            l.configure(
+                                text="🔴 Sem resposta",
+                                text_color="#e74c3c"
+                            )
+                        )
+
                 except:
-                    self.after(0, lambda lbl=label_visual: lbl.configure(text="❌ Erro de DNS", text_color="#e74c3c"))
+                    self.after(
+                        0,
+                        lambda l=lbl_ping:
+                        l.configure(
+                            text="❌ DNS",
+                            text_color="#e74c3c"
+                        )
+                    )
+
+                # HTTP
+                ok_http, codigo = self.verificar_http(host_ext)
+
+                if ok_http:
+                    self.after(
+                        0,
+                        lambda l=lbl_http, c=codigo:
+                        l.configure(
+                            text=f"🟢 HTTP {c}",
+                            text_color="#2ecc71"
+                        )
+                    )
+                else:
+                    self.after(
+                        0,
+                        lambda l=lbl_http, c=codigo:
+                        l.configure(
+                            text=f"🔴 {c}",
+                            text_color="#e74c3c"
+                        )
+                    )
 
             self.after(0, self.atualizar_dashboard)
             time.sleep(2) 
@@ -619,6 +673,12 @@ class NetworkMonitorApp(ctk.CTk):
             linha_frame = ctk.CTkFrame(self.frame_lista_externa, fg_color="transparent")
             linha_frame.pack(fill="x", pady=2, padx=2)
 
+            linha_frame.grid_columnconfigure(0, minsize=220)
+            linha_frame.grid_columnconfigure(1, minsize=300)
+            linha_frame.grid_columnconfigure(2, minsize=150)
+            linha_frame.grid_columnconfigure(3, minsize=180)
+            linha_frame.grid_columnconfigure(4, minsize=100)
+
             # Usando exatamente as mesmas larguras do cabeçalho com anchor="w" (alinhado à esquerda)
             lbl_nome = ctk.CTkLabel(linha_frame, text=nome_ext, width=220, anchor="w")
             lbl_nome.grid(row=0, column=0, padx=5, sticky="w")
@@ -627,14 +687,42 @@ class NetworkMonitorApp(ctk.CTk):
             lbl_host = ctk.CTkLabel(linha_frame, text=host_ext, width=350, anchor="w")
             lbl_host.grid(row=0, column=1, padx=5, sticky="w")
 
-            lbl_status_ext = ctk.CTkLabel(linha_frame, text="Aguardando...", width=180, anchor="w", text_color="gray")
-            lbl_status_ext.grid(row=0, column=2, padx=5, sticky="w")
+            lbl_ping = ctk.CTkLabel(
+                linha_frame,
+                text="Aguardando...",
+                width=150,
+                anchor="w",
+                text_color="gray"
+            )
+            lbl_ping.grid(row=0, column=2, padx=5, sticky="w")
 
-            self.labels_externos[host_ext] = lbl_status_ext
+            lbl_http = ctk.CTkLabel(
+                linha_frame,
+                text="Aguardando...",
+                width=180,
+                anchor="w",
+                text_color="gray"
+            )
+            lbl_http.grid(row=0, column=3, padx=(30, 5), sticky="ew")
+
+            self.labels_externos[host_ext] = {
+                "ping": lbl_ping,
+                "http": lbl_http
+            }
 
             # Frame da ação travado em 100px igual ao cabeçalho para alinhar perfeitamente os botões
-            frame_botoes = ctk.CTkFrame(linha_frame, width=100, fg_color="transparent")
-            frame_botoes.grid(row=0, column=3, padx=5, sticky="w")
+            frame_botoes = ctk.CTkFrame(
+                linha_frame,
+                width=100,
+                fg_color="transparent"
+            )
+
+            frame_botoes.grid(
+                row=0,
+                column=4,
+                padx=(5, 5),
+                sticky="w"
+            )
             frame_botoes.grid_propagate(False)
 
             btn_excluir = ctk.CTkButton(
@@ -642,6 +730,33 @@ class NetworkMonitorApp(ctk.CTk):
                 command=lambda s_id=id_ext: self.excluir_servico_externo(s_id)
             )
             btn_excluir.pack(side="left", anchor="w")
+
+    def verificar_http(self, host):
+        try:
+            url = host.strip()
+
+            if not url.startswith(("http://", "https://")):
+                url = f"https://{url}"
+
+            resposta = requests.get(
+                url,
+                timeout=5,
+                allow_redirects=True
+            )
+
+            if 200 <= resposta.status_code < 400:
+                return True, resposta.status_code
+
+            return False, resposta.status_code
+
+        except requests.exceptions.Timeout:
+            return False, "Timeout"
+
+        except requests.exceptions.ConnectionError:
+            return False, "Conexão"
+
+        except Exception:
+            return False, "Erro"
 
     def excluir_servico_externo(self, servico_id):
         if messagebox.askyesno("Confirmar Exclusão", "Remover este serviço externo?"):
