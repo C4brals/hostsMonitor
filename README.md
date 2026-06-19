@@ -105,12 +105,5 @@ Portal Cliente	🟢 18 ms	🔴 Timeout
 
 Isso permite identificar situações em que o servidor responde ao ping, mas a aplicação web está indisponível.
 
-🎯 Casos de Uso
 
-Monitoramento de servidores Windows e Linux.
-Supervisão de links e equipamentos de rede.
-Monitoramento de websites corporativos.
-Verificação de disponibilidade de APIs.
-Auditoria básica de exposição de serviços.
-Acompanhamento de infraestrutura de TI em pequenas e médias empresas.
 
