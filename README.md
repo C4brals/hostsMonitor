@@ -68,15 +68,21 @@ Layout responsivo e amigável para equipes de TI e suporte.
 
 🛠️ Tecnologias Utilizadas
 
-Tecnologia	    Finalidade
-Python	        Linguagem principal do projeto
-CustomTkinter	  Interface gráfica moderna
-Ping3	Testes    ICMP e medição de latência
-Requests	      Validação de disponibilidade HTTP/HTTPS
-SQLite3	        Banco de dados local
-Threading	      Processamento assíncrono e monitoramento em background
-Plyer	          Notificações nativas do sistema operacional
-Socket	        Escaneamento de portas TCP
+Python - Linguagem principal do projeto
+
+CustomTkinter - Interface gráfica moderna
+
+Ping3	Testes - ICMP e medição de latência
+
+Requests - Validação de disponibilidade HTTP/HTTPS
+
+SQLite3 - Banco de dados local
+
+Threading - Processamento assíncrono e monitoramento em background
+
+Plyer - Notificações nativas do sistema operacional
+
+Socket - Escaneamento de portas TCP
 
 🔍 Tipos de Monitoramento
 
