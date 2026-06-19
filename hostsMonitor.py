@@ -762,7 +762,7 @@ class NetworkMonitorApp(ctk.CTk):
             return False, "Timeout"
 
         except requests.exceptions.ConnectionError:
-            return False, "Conexão"
+            return False, "Sem Conexão"
 
         except Exception:
             return False, "Erro"
