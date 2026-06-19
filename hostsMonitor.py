@@ -215,8 +215,8 @@ class NetworkMonitorApp(ctk.CTk):
         colunas_ext = [
             ("Nome do Serviço", 0, 220),
             ("Endereço / URL", 1, 350),
-            ("Status / Resposta", 2, 180),
-            ("HTTP", 3, 180),
+            ("Latência / Ping", 2, 180),
+            ("HTTP Request", 3, 180),
             ("Ações", 4, 100)
         ]
         for texto, col, largura in colunas_ext:
